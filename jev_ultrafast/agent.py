@@ -10,12 +10,13 @@ from .questions import MAX_STEPS
 
 
 class Agent:
-    def __init__(self, url, goals, *, record_dir=None, screenshots=False):
+    def __init__(self, url, goals, *, record_dir=None, screenshots=False, completion_check=None):
         task = goals.strip() if isinstance(goals, str) else "\n".join(goals).strip()
         if not task:
             raise ValueError("Supply a task")
         plan = [task]
         self.pending_text = None
+        self.completion_check = completion_check
         self.browser = Browser(url)
         self.record_dir = Path(record_dir) if record_dir else None
         self.screenshots = screenshots or bool(record_dir)
@@ -74,7 +75,10 @@ class Agent:
                 raise ValueError("This run has stopped. Start a fresh demo.")
             if len(state["decisions"]) >= MAX_STEPS * 2:
                 raise ValueError("Reached the demo's model-call budget")
-            state["decision"] = choose(state["page"], state["goal"], state["history"])
+            completion = (
+                {"allow_done": bool(self.completion_check(state["page"]))} if self.completion_check else {}
+            )
+            state["decision"] = choose(state["page"], state["goal"], state["history"], **completion)
             state["decisions"].append(
                 {
                     **state["decision"],

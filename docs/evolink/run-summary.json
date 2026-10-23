@@ -1,0 +1,84 @@
+{
+  "recorded_on": "2026-10-22",
+  "task": {
+    "origin": "Shanghai (any airport)",
+    "destination": "Los Angeles (LAX)",
+    "departure": "2026-10-29",
+    "trip_type": "one-way",
+    "adults": 1,
+    "cabin": "economy",
+    "language": "English"
+  },
+  "decision_model_requested": "gpt-6-luna-decisions",
+  "text_model": "gpt-6-luna",
+  "agent_elapsed_ms": 24868,
+  "capture_duration_ms": 25074,
+  "video_duration_seconds": 25.6,
+  "final_hold_ms": 500,
+  "video_sha256": "2d1d70fbd58a2fcb85e94ff42f6b77f7536083d6584ebd143f48e35a6795141e",
+  "http_status_counts": {
+    "200": 30
+  },
+  "successful_attempt_model_calls": {
+    "decisions": 26,
+    "text": 4
+  },
+  "verification": {
+    "passed": true,
+    "checks": {
+      "google_flights_results": true,
+      "one_way": true,
+      "one_passenger": true,
+      "economy": true,
+      "shanghai_origin": true,
+      "los_angeles_destination": true,
+      "departure_october_29": true,
+      "departure_year_2026": true,
+      "visible_flights": true,
+      "english": true,
+      "one_adult_in_results": true,
+      "visible_itineraries_depart_october_29": true
+    },
+    "verified_from": "Unmodified final_page observation in state.json"
+  },
+  "completion_check_enabled": true,
+  "recording_errors": [],
+  "temporary_browser_and_relay_exited": true,
+  "temporary_profile_removed": true,
+  "source_hashes": {
+    "jev_ultrafast/luna_decisions.py": "0653768b7a8a4bec0e7b1ba049b663099b6bb74c0ba67037f123bc183c88289e",
+    "jev_ultrafast/questions.py": "d2b4c39ed4aae2e97b8e146dd50554ad62f13c4f2d3c4bf4cd1d4fce9d55ccdf",
+    "jev_ultrafast/__init__.py": "60f025b8d24465e2c0f7a3547d43b8020fd8843de7b6cb3f892ef63f5548cf63",
+    "jev_ultrafast/model.py": "f7cb2e14b00dcba48cc9cf58f2683348b2b9cc64f3f7c6d19591087a46726ae8",
+    "jev_ultrafast/browser.py": "ee08dafa93d731bd292aa0263a578a29c8001cf22eef3c59fe44a159649155ee",
+    "jev_ultrafast/agent.py": "19aee23aef98901cbebb23742b15fb706e5d97cfa70fc2e15c73bb2bb9b9f7ee",
+    "jev_ultrafast/demo.py": "a0cfb10909b370efb284cbbe16bdb4b7e7e06ba6385827404169027645a1d8a4",
+    "jev_ultrafast/snapshot.js": "e50473501c8fb8e70f3b21866d987393e3f2315c639d638bd477d170e81ed78d"
+  },
+  "earlier_live_attempts": [
+    {
+      "attempt": 1,
+      "result": "HTTP 400: singleton target choice; adapter subsequently fixed"
+    },
+    {
+      "attempt": 2,
+      "result": "Premature DONE while results were loading"
+    },
+    {
+      "attempt": 3,
+      "result": "Autocomplete query returned no matching location"
+    },
+    {
+      "attempt": 4,
+      "result": "Premature DONE before submitting the populated search form"
+    }
+  ],
+  "later_calendar_task": {
+    "task": "Compare November and December departure-fare calendars",
+    "result": "Not completed automatically: repeated calendar open/close actions reached the 60-action budget",
+    "decisions": 118,
+    "text_calls": 5,
+    "manual_browser_followup_is_agent_success": false
+  },
+  "limits": "One verified attempt after fixes, not a general reliability or speed benchmark. Recorded task time excludes browser setup and initial navigation. No dollar cost is asserted."
+}

@@ -1,0 +1,29 @@
+{
+  "upstream": "https://github.com/browser-use/jev-ultrafast",
+  "upstream_commit": "1231850a0bf1a0c0341fe408ef1668dbbfdfac46",
+  "license": "MIT",
+  "source_post": "https://x.com/gregpr07/status/2100411066966749359",
+  "source_verification": "Original X direct read returned 403; confirmed repository, author/project docs and indexed source mapping; no performance/price claim revalidated.",
+  "local_branch": "local/evolink-luna-decision",
+  "adapted_at": "2026-10-21",
+  "live_api_calls": null,
+  "live_api_calls_at_initial_adaptation": 0,
+  "live_api_calls_note": "Live testing performed on 2026-10-22. Final verified run logged 30 HTTP requests, all 200; earlier failed attempts and diagnostic calls are retained but were not all instrumented at transport level.",
+  "verified_live_run": {
+    "date": "2026-10-22",
+    "route": "Shanghai to Los Angeles (LAX)",
+    "departure": "2026-10-29",
+    "report": "docs/evolink/README.md",
+    "final_attempt_http_requests": 30,
+    "passed": true,
+    "summary": "docs/evolink/run-summary.json",
+    "video": "docs/evolink/shanghai-lax.mp4"
+  },
+  "repository": "https://github.com/cheercheung/jev-ultrafast",
+  "distribution": "Public fork with original MIT license and upstream attribution retained",
+  "known_limitations": [
+    "Single verified flight-search attempt after earlier failures; no general reliability claim",
+    "Multi-month calendar task reached its action budget; browser follow-up was not an agent success",
+    "Original upstream Jev/Mercury timings are not Luna measurements"
+  ]
+}

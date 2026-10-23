@@ -12,6 +12,12 @@ from jev_ultrafast import model
 from jev_ultrafast.browser import StalePage, browser_operation, fingerprint
 
 
+@pytest.fixture(autouse=True)
+def upstream_provider(monkeypatch):
+    # These upstream regression fixtures use the original TypeSafe wire shape.
+    monkeypatch.setenv("DECISION_PROVIDER", "typesafe")
+
+
 def page():
     state = {
         "url": "https://example.test/",

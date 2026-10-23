@@ -7,6 +7,7 @@ import time
 
 import httpx
 
+from . import luna_decisions
 from .questions import NEXT_ACTION, TARGET, TEXT_VALUE
 
 CLIENT = httpx.Client(http2=True, timeout=25)
@@ -78,7 +79,7 @@ def action_space(actions):
     return elements, targets, controls
 
 
-def choose(state, goal, history):
+def choose(state, goal, history, *, allow_done=True):
     elements, targets, controls = action_space(state["actions"])
     labels = {
         "CLICK": "Click an element, button, menu option, autocomplete suggestion, or calendar day.",
@@ -87,7 +88,9 @@ def choose(state, goal, history):
     }
     operations = {key: labels[key] for key in targets}
     operations.update({key: value["label"] for key, value in controls.items()})
-    operations.update(DONE="Every requirement is visibly satisfied.", BLOCKED="No supported operation can progress.")
+    if allow_done:
+        operations["DONE"] = "Every requirement is visibly satisfied."
+    operations["BLOCKED"] = "No supported operation can progress."
     questions = {
         "operation": {"type": "choice", "criteria": operations, "instructions": {"goal": goal, "rules": NEXT_ACTION}}
     }
@@ -116,7 +119,15 @@ def choose(state, goal, history):
         "questions": questions,
     }
     started = time.perf_counter()
-    result = post_json("https://api.typesafe.ai/v1/systemone", os.environ["TYPESAFE_API_KEY"], body)
+    provider = os.environ.get("DECISION_PROVIDER", "evolink")
+    if provider == "evolink":
+        url, key, model = luna_decisions.configuration()
+        body = luna_decisions.request_body(body["state"], questions, model)
+        result = luna_decisions.normalize(post_json(url, key, body), questions, validate_choice)
+    elif provider == "typesafe":
+        result = post_json("https://api.typesafe.ai/v1/systemone", os.environ["TYPESAFE_API_KEY"], body)
+    else:
+        raise ValueError("DECISION_PROVIDER must be evolink or typesafe; no request sent.")
     operation_answer = validate_choice(result["answers"].get("operation", {}), operations)
     operation = operation_answer["choice"]
     target = None
@@ -166,6 +177,8 @@ def field_text(context):
     reasoning = {"thinking": {"type": "disabled"}} if "api.deepseek.com/" in base else {"reasoning": {"effort": "low"}}
     if os.environ.get("TEXT_MODEL_REASONING") == "none":
         reasoning = {"reasoning": {"enabled": False}}
+    if model == "gpt-6-luna" and base in {"https://api.evolink.ai/v1", "https://direct.evolink.ai/v1"}:
+        reasoning = {"reasoning_effort": os.environ.get("TEXT_MODEL_REASONING", "none")}
     started = time.perf_counter()
     result = post_json(
         base + "/chat/completions",

@@ -1,142 +1,186 @@
-<img src="docs/banner.svg" alt="Jev Ultrafast · Browser Use × TypeSafe" width="100%" />
+# Jev Ultrafast — EvoLink Luna
 
-# Jev Ultrafast ⚡
+A small browser agent that turns a natural-language goal into observed browser actions using **EvoLink Luna Decisions**. A separate **Luna text model** generates search terms and field values when typing is needed.
 
-> [!IMPORTANT]
-> **The Browser Use Cloud waitlist is open.** Get early access to ultrafast browser agents in the cloud.
-> **[Join the waitlist →](https://browser-use.com/ultrafast?utm_source=github&utm_medium=readme&utm_campaign=jev-ultrafast)**
+This is an EvoLink adaptation of [browser-use/jev-ultrafast](https://github.com/browser-use/jev-ultrafast), published under the original [MIT license](LICENSE). Browser Use Cloud and the `browser-use` Python package are not required; browser control uses [Browser Harness](https://github.com/browser-use/browser-harness).
 
-**A browser agent with a dynamic, indexed action space.**
+## What is it useful for?
 
-Give it one goal. [TypeSafe's Jev](https://docs.typesafe.ai/introduction) picks an operation and an element. A small LLM writes text only when the operation is `TYPE_TEXT`.
+- **Prototype browser workflows:** give the agent a narrow task, such as finding a page, entering search criteria or applying a filter.
+- **Inspect model decisions:** the local inspector exposes numbered controls, operation probabilities, target probabilities, latency and action history. You can choose and execute one step at a time.
+- **Evaluate a Decisions API integration:** compare model choices against actual browser outcomes rather than treating a valid response or `DONE` as success.
+- **Build small acceptance tests:** supply your own completion check for a visible result, URL or applied filter.
 
-**Zürich → London on Google Flights in 7.1 seconds.** One natural-language goal, actual text generation, and loading waits included.
+It is an experimental baseline for developers. Multi-step tasks can stall, choose unsuitable text, or declare completion too early. It is not a booking service or a reliable general-purpose travel assistant.
 
-<a href="docs/demo.mp4"><img src="docs/demo.gif" alt="A real Google Flights search at 1× speed, with generated city names and dynamic operation/target decisions" width="100%" /></a>
+## Recorded example
 
-[Watch the MP4](docs/demo.mp4) · [Measurements](docs/performance.md) · [Read the loop](jev_ultrafast/agent.py)
+**Shanghai → Los Angeles, one-way, October 29, 2026, one adult, economy.** The final recorded attempt displayed matching flight options and passed independent checks.
 
-## The action space
+[![EvoLink Luna browser demo: Shanghai to Los Angeles](docs/evolink/shanghai-lax.png)](docs/evolink/shanghai-lax.mp4)
 
-Every observation produces a new element table:
+[Watch the English MP4](docs/evolink/shanghai-lax.mp4) · [Measurements and limitations](docs/evolink/README.md) · [Run summary](docs/evolink/run-summary.json)
 
-```text
-[1] button    Change ticket type · Round trip
-[2] combobox  Where from?        · San Francisco
-[3] combobox  Where to?          · empty
-[4] textbox   Departure          · empty
-...
-```
+The logged agent time was **24.868 seconds**; the video is **25.6 seconds** at original speed, including loading waits and a final hold. The successful attempt made **26 decision requests + 4 text requests**, all HTTP 200. It used the optional completion guard described below. Four earlier live attempts failed; a later multi-month fare-calendar task also failed to finish automatically. These are individual development runs, not a reliability benchmark. The upstream 7.1-second Jev/Mercury result is not a Luna measurement.
 
-The operations are `CLICK`, `TYPE_TEXT`, `SELECT`, `SCROLL_UP`, `SCROLL_DOWN`, `WAIT`, `DONE`, and `BLOCKED`. Only supported operations and targets are offered.
+## Quick start
 
-```text
-                      one TypeSafe request
-                     ┌───────────────────────────┐
-page → element table → operation                 │
-                     │ click_target              │
-                     │ type_text_target          │
-                     │ select_target, if present │
-                     └─────────────┬─────────────┘
-                         use the matching target
-                                   │
-                    CLICK [7] ─────┤──→ browser
-                TYPE_TEXT [3] ─────┘
-                          ↓
-                   small LLM → text → browser
-```
+You need **Python 3.12+**, [uv](https://docs.astral.sh/uv/), a local Chrome/Chromium browser and an [EvoLink API key](https://evolink.ai/). Node.js is only needed for the development syntax checks; FFmpeg and Pillow are only needed for rendering videos.
 
-Target questions are speculative. If the operation is `CLICK`, only `click_target` can execute. Two decisions, **one network round trip**. Each target head contains only compatible elements. Native dropdown choices carry an observed element/option index.
-
-There are no site-specific action scripts or prepared field strings in the policy. The Flights example supplies a goal and independently verifies the outcome. The screenshot renderer adds labels afterward; it does not drive the browser.
-
-## Try it
+### 1. Install
 
 ```bash
-git clone https://github.com/browser-use/jev-ultrafast.git
+git clone https://github.com/cheercheung/jev-ultrafast.git
 cd jev-ultrafast
-uv sync
+uv sync --frozen
 cp .env.example .env
-# Add TYPESAFE_API_KEY and TEXT_MODEL_API_KEY.
-uv run jev
+chmod 600 .env
 ```
 
-Open **http://127.0.0.1:8766** and click **Start demo → Run automatically**. The inspector shows numbered elements, operation probabilities, target probabilities, and executed actions. **Choose next** pauses before execution.
+### 2. Fill in your local key
 
-Chrome connects through [Browser Harness](https://github.com/browser-use/browser-harness), installed by `uv sync`. Run `uv run browser-harness --doctor` if it needs connecting. Allow remote debugging in Chrome when prompted.
+Edit `.env` in your editor. Enter the **same EvoLink key in both key fields**. The remaining defaults already select Luna for both jobs:
 
-`TEXT_MODEL_API_KEY` is an OpenRouter key in the example configuration. The current demo uses `inception/mercury-2.5` with reasoning disabled. Gemini, GLM, and DeepSeek can also use the OpenAI-compatible text helper; configure the appropriate model, endpoint, and reasoning setting.
+```dotenv
+DECISION_PROVIDER=evolink
+EVOLINK_API_KEY=your_evolink_key
+EVOLINK_BASE_URL=https://direct.evolink.ai
+EVOLINK_MODEL=gpt-6-luna-decisions
 
-## Use the library
-
-```python
-from jev_ultrafast import Agent
-
-with Agent(
-    "https://www.google.com/travel/flights?hl=en",
-    "Find one-way flights from Zurich to London on September 20, 2026, "
-    "for one adult in economy. Stop when matching flight options are visible.",
-) as agent:
-    for state in agent.run():
-        print(state["elapsed_ms"], state["status"])
+TEXT_MODEL_API_KEY=your_evolink_key
+TEXT_MODEL_BASE_URL=https://api.evolink.ai/v1
+TEXT_MODEL=gpt-6-luna
+TEXT_MODEL_REASONING=none
 ```
 
-Run with `uv run --env-file .env python your_script.py`. The same policy can run a different task:
+Use literal values in `.env`; the inspector's loader does not expand `${VARIABLE}` references. The file is ignored by Git. Keep real keys out of source files, screenshots and exported traces.
+
+| Job | Endpoint | Model |
+| --- | --- | --- |
+| Choose the operation and observed target | `POST https://direct.evolink.ai/v1/decisions` | `gpt-6-luna-decisions` |
+| Generate a field value for `TYPE_TEXT` | `POST https://api.evolink.ai/v1/chat/completions` | `gpt-6-luna` |
+
+Decisions selects from supplied options; it does not write free-form field text. Do not use `gpt-6-luna-decisions` as the text-helper model. See [Decisions documentation](https://evolink.ai/docs/en/api-manual/language-series/gpt/decisions/decisions-reference.json) and [Luna Chat Completions](https://evolink.ai/gpt-6-luna).
+
+### 3. Connect your browser
+
+Use a **dedicated test browser profile**, then run:
+
+```bash
+uv run browser-harness --doctor
+```
+
+Follow [Browser Harness's connection instructions](https://github.com/browser-use/browser-harness/blob/main/install.md) to enable remote debugging for that browser. The default local connection uses an existing browser profile; creating an owned tab does not create a fresh profile. If you already manage an isolated CDP browser, set `BU_CDP_URL` or `BU_CDP_WS` to its endpoint.
+
+### 4. Open the inspector
+
+```bash
+uv run --env-file .env jev
+```
+
+Open **http://127.0.0.1:8766**. Replace the prefilled upstream goal with your task, using a future date for any travel search. Click **Start demo**, then **Run automatically**.
+
+For step-by-step inspection, use **Choose next → Execute choice**. The **Targets** toggle overlays element indices, and **Export trace** saves the executed history. The inspector retains the upstream visual layout; the provider and models are selected by `.env`.
+
+The inspector does not install a task-specific completion check automatically. Inspect the final page yourself, or use the Python API below to make completion depend on an independent check. Live runs make paid model requests; the offline tests do not.
+
+### Common setup issues
+
+- **Browser not connected:** run `uv run browser-harness --doctor` and complete the connection for your test browser. For local CDP, ensure `localhost` and `127.0.0.1` bypass any proxy.
+- **Missing `socksio`:** an inherited `all_proxy=socks5://...` requires HTTPX's optional SOCKS dependency. If working HTTP(S) proxy settings are already available, use `env -u ALL_PROXY -u all_proxy uv run --env-file .env jev` to omit only the SOCKS fallback for that process. Otherwise configure the required proxy support first.
+- **No text generated:** fill `TEXT_MODEL_API_KEY` as well as `EVOLINK_API_KEY`; they can contain the same key. A Decisions key alone does not populate the text-helper setting.
+- **Repeated actions or early completion:** narrow the goal, inspect the trace and add an independent completion check. Do not count a stopped loop as a successful search.
+
+## Run your own task
+
+The CLI accepts a starting URL and one natural-language goal:
 
 ```bash
 uv run --env-file .env python examples/run.py \
   --url https://en.wikipedia.org/wiki/Main_Page \
-  --goal 'Find and open the Wikipedia article about Gödel’s incompleteness theorems.'
+  --goal 'Find and open the English Wikipedia article about Ada Lovelace.'
 ```
 
-`uv run --env-file .env python examples/flights.py --keep-open` performs the flight search, checks the actual route/date/results, and saves its trace. It does not select or book a flight.
+For an acceptance test, save the following as `your_task.py`. The checker only verifies the observed result; it does not choose or execute browser actions.
 
-## Why it moves
+```python
+from urllib.parse import urlparse
 
-- **One request per decision cycle.** Operation and target heads share the same observed state.
-- **No screenshots in the default agent loop.** Jev consumes structured state. The inspector opts into screenshots; the video uses a separate continuous screencast.
-- **One browser call per snapshot.** Read visible controls, their names, values, and text atomically. Keep references to the actual DOM nodes.
-- **Validate the selected target.** Clicks check the document, form values, target, and nearby context. Animation alone does not force another prediction. Resolve current geometry and reject covered controls before input.
-- **Wait for useful state.** After typing into a combobox, wait for visible suggestions, capped at 200 ms. Other interactions get at most two animation frames or 50 ms. These reads happen after execution is logged.
-- **Keep hidden tabs rendering.** Focus emulation prevents background animation throttling without switching Chrome's visible tab.
-- **Send visible text.** Offscreen article bodies and footers do not fill the model context.
-- **Reuse an interrupted text request.** A generated value survives a stale-page retry only if the entire text-helper input is unchanged.
+from jev_ultrafast import Agent
 
-Every executed target is resolved from an observed node. The executor rechecks page freshness and click occlusion. Model output never becomes selectors, coordinates, shell commands, or executable JavaScript. Text-helper output must parse as a small JSON object before typing.
 
-## Small enough to read
+def article_is_open(page):
+    url = urlparse(page["url"])
+    return url.hostname == "en.wikipedia.org" and url.path == "/wiki/Ada_Lovelace"
 
-| File | Job |
+
+with Agent(
+    "https://en.wikipedia.org/wiki/Main_Page",
+    "Find and open the English Wikipedia article about Ada Lovelace.",
+    completion_check=article_is_open,
+) as agent:
+    for state in agent.run():
+        print(state["elapsed_ms"], state["status"])
+    if not article_is_open(agent.snapshot()["page"]):
+        raise RuntimeError("The requested article was not opened")
+```
+
+```bash
+uv run --env-file .env python your_task.py
+```
+
+`completion_check` removes `DONE` from the offered operations until the observed page passes the callback. You still need a meaningful checker and a final assertion: `BLOCKED`, an exception or a call-budget stop is not success. The default budget is 60 executed actions and 120 decision attempts, with text calls additional.
+
+## How the loop works
+
+```text
+page → visible text + indexed controls → Luna Decisions → operation + target
+                                                               ↓
+                                            TYPE_TEXT? → Luna → field text
+                                                               ↓
+                                   validate freshness → execute → observe
+```
+
+Available operations are `CLICK`, `TYPE_TEXT`, `SELECT`, `SCROLL_UP`, `SCROLL_DOWN`, `WAIT`, `DONE` and `BLOCKED`. The operation and operation-specific target questions share one Decisions request. Only the target matching the chosen operation can execute. A target with one observed choice is resolved locally because the API requires at least two choices; its probability of 1 is deterministic, not a model confidence estimate.
+
+The model sees structured page observations, not screenshots. It cannot return selectors or executable code. Execution checks page freshness and target occlusion. The agent logs each browser mutation before reading its result and does not replay uncertain browser mutations.
+
+## What has actually been verified?
+
+| Check | Result |
 | --- | --- |
-| [agent.py](jev_ultrafast/agent.py) | The complete loop and text-helper handoff |
-| [snapshot.js](jev_ultrafast/snapshot.js) | Atomic DOM snapshot, indexed controls, freshness guards |
-| [browser.py](jev_ultrafast/browser.py) | Browser connection, current geometry, execution |
-| [model.py](jev_ultrafast/model.py) | Dynamic operation/target heads and text generation |
-| [questions.py](jev_ultrafast/questions.py) | Model instructions |
-| [demo.py](jev_ultrafast/demo.py) | Local inspector |
+| EvoLink request/response mapping, malformed replies and target validation | Covered by offline tests |
+| Single-day Shanghai → LAX search | Final attempt independently verified; earlier failures retained in the summary |
+| Two-month fare-calendar comparison | Not completed by the agent; later manual/browser research is not an agent success |
+| General reliability, price accuracy, model quality or total dollar cost | Not established |
 
-## Evidence and limits
+The DOM reader supports common HTML and ARIA controls. Shadow roots, frames, canvas, uploads, pop-up tabs, nested scrolling and arbitrary keyboard widgets remain outside this MVP. The agent can cycle through controls without useful progress before reaching its budget.
 
-The current video is a **7,073 ms** Google Flights run. Timing starts after initial page observation and includes model calls, generated text, browser work, stale decisions, and loading waits. A fresh independent check verifies the one-way setting, Zürich, London, September 20, 2026, and visible flight options. The video plays at 1×, with no opening hold and a 0.5-second final hold.
-
-In six alternating runs with identical models and settings, both versions passed **3/3**. Median task time went from **9.450 s → 7.092 s**, a **25% reduction**; median browser protocol calls went from **1,092 → 101**. This is three repeats of one task on one browser profile, not a general reliability benchmark.
-
-The same policy opened the requested Wikipedia article in **2.798 s** and passed a local hotel search/filter task in **1.896 s**. Runs, failures, source hashes, and measurement boundaries are in [performance.md](docs/performance.md).
-
-A `DONE` choice still requires independent outcome verification. The DOM reader handles common HTML and ARIA controls, not the full accessible-name specification. Shadow roots, frames, canvas, uploads, pop-up tabs, nested scrolling, and arbitrary keyboard widgets remain outside this MVP. Owned tabs share the existing Chrome profile.
+Visible page text and controls are sent to the configured model endpoints. Use test data and a dedicated browser profile. A `DONE` prediction or HTTP 200 alone is never proof of the task's final outcome.
 
 ## Development
 
 ```bash
 uv run ruff check .
-uv run pytest
+BROWSER_HARNESS_HOME="$PWD/artifacts/offline-harness" uv run pytest -q
 node --check jev_ultrafast/static/app.js
 node --check jev_ultrafast/snapshot.js
 uv build
 ```
 
-Tests are offline. `uv run python scripts/check_guards.py` checks real controls in a local browser without model calls. Live examples and recording scripts make paid API calls. `scripts/record_flights.py <new-folder>` captures original browser timestamps; `scripts/render_demo.py <recording-folder>` renders that verified run at 1× and crops out the Google account strip. Credentials and raw traces stay ignored.
+The last verified offline run passed **50 tests**. Tests use mocked HTTP responses and do not require API keys or a browser. [Integration notes](EVOLINK_LOCAL.md) describe the wire mapping and verification boundaries.
 
----
+| File | Purpose |
+| --- | --- |
+| [agent.py](jev_ultrafast/agent.py) | Goal loop, text handoff and optional completion check |
+| [luna_decisions.py](jev_ultrafast/luna_decisions.py) | EvoLink Decisions transport mapping and response validation |
+| [model.py](jev_ultrafast/model.py) | Dynamic operation/target questions and text generation |
+| [browser.py](jev_ultrafast/browser.py) | Browser connection, freshness checks and execution |
+| [snapshot.js](jev_ultrafast/snapshot.js) | Atomic DOM observations and indexed controls |
+| [demo.py](jev_ultrafast/demo.py) | Loopback-only inspector |
 
-[Browser Use](https://github.com/browser-use/browser-use) · [Browser Harness](https://github.com/browser-use/browser-harness) · [TypeSafe speculative fan-out](https://docs.typesafe.ai/patterns/fan-out)
+## Upstream and license
+
+Original project: [browser-use/jev-ultrafast](https://github.com/browser-use/jev-ultrafast), snapshot `1231850a0bf1a0c0341fe408ef1668dbbfdfac46`. Original authorship and the [MIT license](LICENSE) are preserved. This fork is maintained by [cheercheung](https://github.com/cheercheung); it is not an official Browser Use release.
+
+The original TypeSafe transport remains available with `DECISION_PROVIDER=typesafe`, `TYPESAFE_API_KEY` and `TYPESAFE_MODEL`. Its separate text-helper configuration still applies. [Upstream measurements](docs/performance.md), [original demo](docs/demo.mp4) and [source provenance](EVOLINK_SOURCE.json) are retained for reference; their timings are not claims about EvoLink Luna.
